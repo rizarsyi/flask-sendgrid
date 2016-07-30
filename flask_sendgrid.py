@@ -1,4 +1,9 @@
 import sendgrid
+from sendgrid.helpers.mail import (
+    Mail,
+    Email,
+    Content,
+)
 
 
 class FlaskSendGrid(object):
@@ -19,18 +24,19 @@ class FlaskSendGrid(object):
         if not opts.get('from_email', None) and not self.default_from:
             raise ValueError('No from email or default_from was configured')
 
-        client = sendgrid.SendGridClient(self.api_key)
-        message = sendgrid.Mail()
+        sg = sendgrid.SendGridAPIClient(apikey=self.api_key)
 
-        for _ in opts['to']:
-            message.add_to(_['email'])
-
-        message.set_from(opts.get('from_email', None) or self.default_from)
-        message.set_subject(opts['subject'])
+        to_email = Email(opts.get('to_email'))
+        from_email = Email(opts.get('from_email', None) or self.default_from)
+        subject = opts['subject']
 
         if opts.get('html', None):
-            message.set_html(opts['html'])
+            content = Content('html', opts['html'])
         elif opts.get('text', None):
-            message.set_html(opts['text'])
+            content = Content('text/plain', opts['text'])
 
-        client.send(message)
+        mail = Mail(from_email, subject, to_email, content)
+        data = mail.get()
+        response = sg.client.mail.send.post(request_body=data)
+
+        return response.status_code
